@@ -19,3 +19,4 @@ app.use("/api/notes", noteRoutes);
 mongoose.connect(process.env.MONGODB_URI).then(() => {
   app.listen(4000, () => console.log("Backend running on port 4000"));
 });
+module.exports = app;
