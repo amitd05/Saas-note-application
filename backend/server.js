@@ -11,21 +11,31 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect MongoDB (serverless-friendly)
+// MongoDB connection cache
 let cached = global.mongoose;
 if (!cached) cached = global.mongoose = { conn: null, promise: null };
 
 async function dbConnect() {
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGODB_URI).then((mongoose) => mongoose);
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
+      bufferCommands: false
+    }).then((mongoose) => mongoose);
   }
   cached.conn = await cached.promise;
   return cached.conn;
 }
 
-// Connect DB immediately
-dbConnect().then(() => console.log("MongoDB connected"));
+// Middleware to ensure DB connection for each request
+app.use(async (req, res, next) => {
+  try {
+    await dbConnect();
+    next();
+  } catch (err) {
+    console.error("DB connection failed:", err);
+    res.status(500).json({ error: "Database connection failed" });
+  }
+});
 
 // Health check
 app.get("/api/health", (_, res) => res.json({ status: "ok" }));
